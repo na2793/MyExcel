@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/activity_main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/white"
+    tools:context="com.study.hancom.myexcel.activity.MainActivity">
+
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_weight="1">
+        <Button
+            android:text="@string/button_new_document"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:id="@+id/button_new"
+            android:layout_weight="1" />
+        <Button
+            android:text="@string/button_load_file"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:id="@+id/button_load"
+            android:layout_weight="1" />
+        <Button
+            android:text="@string/button_save_file"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:id="@+id/button_save"
+            android:layout_weight="1" />
+    </LinearLayout>
+
+    <!--EditText
+        android:text=""
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/editText"
+        android:gravity="center_vertical"
+        android:layout_weight="1"
+        android:textColor="@color/colorPrimary"
+        /-->
+
+    <com.study.hancom.myexcel.view.WorkBookView
+        android:id="@+id/workBookView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_weight="20"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        />
+
+</LinearLayout>
