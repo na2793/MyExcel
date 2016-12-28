@@ -9,7 +9,6 @@ import android.util.Log;
 import com.study.hancom.myexcel.model.Cell;
 import com.study.hancom.myexcel.model.Sheet;
 import com.study.hancom.myexcel.model.WorkBook;
-import com.study.hancom.myexcel.util.listener.DataChangeListenerService;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -21,6 +20,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static com.study.hancom.myexcel.BuildConfig.DEBUG;
+import static com.study.hancom.myexcel.model.WorkBook.DEFAULT_SHEET_MAX_COLUMN;
+import static com.study.hancom.myexcel.model.WorkBook.DEFAULT_SHEET_MAX_ROW;
 
 public final class Hana {
     private static final String TAG = "Hana";
@@ -92,8 +93,8 @@ public final class Hana {
                     content.append(DEFAULT_CELL_SEPARATOR);
                     linebreak(content);
 
-                    int maxColumn = sheet.getMaxColumn();
-                    int maxRow = sheet.getMaxRow();
+                    int maxColumn = DEFAULT_SHEET_MAX_COLUMN;
+                    int maxRow = DEFAULT_SHEET_MAX_ROW;
                     int firstColumn = maxColumn;
                     int firstRow = maxRow;
                     int lastColumn = 1;

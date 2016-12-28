@@ -10,26 +10,20 @@ import android.util.Log;
 import com.study.hancom.myexcel.model.Cell;
 import com.study.hancom.myexcel.model.Sheet;
 import com.study.hancom.myexcel.model.WorkBook;
-import com.study.hancom.myexcel.util.Utils;
 import com.study.hancom.myexcel.util.exception.CellOutOfSheetBoundException;
-import com.study.hancom.myexcel.util.excelFunction.ExcelFunctionFactory;
 import com.study.hancom.myexcel.util.Hana;
 import com.study.hancom.myexcel.util.exception.DuplicatedSheetNameException;
 import com.study.hancom.myexcel.util.exception.SheetOutOfSheetListBoundsException;
 import com.study.hancom.myexcel.util.listener.DataChangeListenerService;
 
 import static com.study.hancom.myexcel.BuildConfig.DEBUG;
-import static com.study.hancom.myexcel.model.Cell.TYPE_CELL_FUNCTION;
-import static com.study.hancom.myexcel.model.Cell.TYPE_CELL_NUMBER;
-import static com.study.hancom.myexcel.model.Cell.TYPE_CELL_STRING;
 import static com.study.hancom.myexcel.util.Hana.HANA_FILENAME_EXTENSION;
-import static com.study.hancom.myexcel.util.excelFunction.ExcelFunction.EXCEL_FUNCTION_START_CHAR;
 import static com.study.hancom.myexcel.view.WorkBookView.SECTION_TYPE_RESET;
 
 public class WorkBookController {
     private static final String TAG = "WorkBookController";
 
-    public static final int DEFAULT_SHEET_COUNT = 3;
+    private static final int DEFAULT_SHEET_COUNT = 3;
 
     private String mFileName = null;
     private WorkBook mWorkBook = null;
@@ -84,33 +78,28 @@ public class WorkBookController {
         mWorkBook.changeSheetOrder(allSheetId[sheetNum], newSheetOrder);
     }
 
-    public int getMaxRow(int sheetNum) {
-        return getSheet(sheetNum).getMaxRow();
-    }
-
-    public int getMaxColumn(int sheetNum) {
-        return getSheet(sheetNum).getMaxColumn();
-    }
-
     public Cell getCell(int sheetNum, int column, int row) throws CellOutOfSheetBoundException {
         return getSheet(sheetNum).getCell(column, row);
     }
 
-    public void setCell(int sheetNum, int column, int row, String value) throws CellOutOfSheetBoundException {
+    public Cell setCell(int sheetNum, int column, int row, String value, int type) throws CellOutOfSheetBoundException {
+        Cell cell = null;
+
         if (value != null) {
-            int type = validateValue(value);
             Sheet sheet = getSheet(sheetNum);
             if (sheet != null) {
                 //**무조건 삭제
                 sheet.deleteCell(column, row);
                 if (value.length() > 0) {
-                    sheet.createCell(column, row, value, type);
+                    cell = sheet.createCell(column, row, value, type);
                 }
                 if (DEBUG) {
                     Log.d(TAG, "type : " + type);
                 }
             }
         }
+
+        return cell;
     }
 
     // .hana 파일을 저장합니다.
@@ -185,20 +174,5 @@ public class WorkBookController {
         }
 
         return fileName;
-    }
-
-    private int validateValue(String value) {
-
-        if (value.startsWith(EXCEL_FUNCTION_START_CHAR)) {
-            if (ExcelFunctionFactory.isExcelFunction(value)) {
-                return TYPE_CELL_FUNCTION;
-            } else {
-                return TYPE_CELL_STRING;
-            }
-        } else if (Utils.isNumber(value)) {
-            return TYPE_CELL_NUMBER;
-        } else {
-            return TYPE_CELL_STRING;
-        }
     }
 }

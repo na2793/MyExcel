@@ -14,17 +14,17 @@ import android.widget.Toast;
 
 import com.study.hancom.myexcel.R;
 import com.study.hancom.myexcel.controller.WorkBookController;
+import com.study.hancom.myexcel.util.listener.DataChangeListenerService;
 import com.study.hancom.myexcel.view.WorkBookView;
 
 import static com.study.hancom.myexcel.BuildConfig.DEBUG;
 import static com.study.hancom.myexcel.util.Hana.HANA_FILENAME_EXTENSION;
-import static com.study.hancom.myexcel.util.listener.DataChangeListenerService.setDataChangeListener;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final int REQUEST_CODE_LOAD_FILE = 1;
 
-    private WorkBookController workBookController = new WorkBookController();
+    private WorkBookController workBookController = null;
     private WorkBookView workBookView = null;
 
     private Button newFileButton = null;
@@ -38,8 +38,9 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         workBookView = (WorkBookView) findViewById(R.id.workBookView);
+        DataChangeListenerService.setDataChangeListener(workBookView);
+        workBookController = new WorkBookController();
         workBookView.setController(workBookController);
-        setDataChangeListener(workBookView);
 
         newFileButton = (Button) findViewById(R.id.button_new);
         newFileButton.setOnClickListener(new View.OnClickListener() {
@@ -140,6 +141,5 @@ public class MainActivity extends AppCompatActivity {
 
                 break;
         }
-
     }
 }

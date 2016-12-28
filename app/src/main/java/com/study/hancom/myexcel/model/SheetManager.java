@@ -1,11 +1,12 @@
 package com.study.hancom.myexcel.model;
 
-import android.util.Log;
-
 import com.study.hancom.myexcel.util.exception.DuplicatedSheetNameException;
 import com.study.hancom.myexcel.util.exception.SheetOutOfSheetListBoundsException;
 
 import java.util.LinkedList;
+
+import static com.study.hancom.myexcel.model.WorkBook.DEFAULT_SHEET_MAX_COLUMN;
+import static com.study.hancom.myexcel.model.WorkBook.DEFAULT_SHEET_MAX_ROW;
 
 class SheetManager {
     private static final String DEFAULT_SHEET_NAME = "sheet";
@@ -15,11 +16,11 @@ class SheetManager {
     SheetManager() {}
 
     // 인자의 값을 갖는 sheet를 생성합니다.
-    Sheet createSheet(int maxColumn, int maxRow) {
-        return this.createSheet(null, maxColumn, maxRow);
+    Sheet createSheet() {
+        return this.createSheet(null);
     }
 
-    Sheet createSheet(String sheetName, int maxColumn, int maxRow) {
+    Sheet createSheet(String sheetName) {
 
         if (sheetName == null) {
             final int sheetCount = mSheetList.size();
@@ -44,7 +45,7 @@ class SheetManager {
             sheetName = DEFAULT_SHEET_NAME + sheetNameNum;
         }
 
-        final Sheet sheet = new Sheet(sheetName, maxColumn, maxRow);
+        final Sheet sheet = new Sheet(sheetName, DEFAULT_SHEET_MAX_COLUMN, DEFAULT_SHEET_MAX_ROW);
         mSheetList.addLast(sheet);
 
         return sheet;

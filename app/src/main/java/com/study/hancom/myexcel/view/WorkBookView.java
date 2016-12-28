@@ -22,6 +22,10 @@ import android.widget.Toast;
 import com.study.hancom.myexcel.R;
 import com.study.hancom.myexcel.controller.WorkBookController;
 import com.study.hancom.myexcel.model.Cell;
+import com.study.hancom.myexcel.model.Sheet;
+import com.study.hancom.myexcel.model.WorkBook;
+import com.study.hancom.myexcel.util.Utils;
+import com.study.hancom.myexcel.util.excelFunction.ExcelFunctionFactory;
 import com.study.hancom.myexcel.util.exception.CellOutOfSheetBoundException;
 import com.study.hancom.myexcel.util.exception.DuplicatedSheetNameException;
 import com.study.hancom.myexcel.util.exception.SheetOutOfSheetListBoundsException;
@@ -34,10 +38,13 @@ import static com.study.hancom.myexcel.BuildConfig.DEBUG;
 import static com.study.hancom.myexcel.model.Cell.TYPE_CELL_FUNCTION;
 import static com.study.hancom.myexcel.model.Cell.TYPE_CELL_NUMBER;
 import static com.study.hancom.myexcel.model.Cell.TYPE_CELL_STRING;
+import static com.study.hancom.myexcel.model.WorkBook.DEFAULT_SHEET_MAX_COLUMN;
+import static com.study.hancom.myexcel.model.WorkBook.DEFAULT_SHEET_MAX_ROW;
 import static com.study.hancom.myexcel.util.DrawText.ALIGNMENT_CENTER;
 import static com.study.hancom.myexcel.util.DrawText.ALIGNMENT_LEFT;
 import static com.study.hancom.myexcel.util.DrawText.ALIGNMENT_RIGHT;
 import static com.study.hancom.myexcel.util.DrawText.drawText;
+import static com.study.hancom.myexcel.util.excelFunction.ExcelFunction.EXCEL_FUNCTION_START_CHAR;
 import static com.study.hancom.myexcel.util.excelFunction.ExcelFunctionFactory.getExcelFunction;
 
 /**
@@ -102,8 +109,9 @@ public class WorkBookView extends View implements DataChangeListenerService.OnDa
     private static final int DEFAULT_CELL_WIDTH = 250;
 
     private static final int DEFAULT_SHEET_NUM = 0;
-    private static final int DEFAULT_NUM_COLUMNS = 26;   // 26 = column (A ~ Z)
-    private static final int DEFAULT_NUM_ROWS = 100;  // 100 = row (1 ~ 100)
+
+    private static final int DEFAULT_SHEET_COUNT = 3;
+
     /* COLOR END */
 
     private final Paint paint = new Paint();
@@ -119,15 +127,15 @@ public class WorkBookView extends View implements DataChangeListenerService.OnDa
     private final RectF headerCrossSectionRect = new RectF();
 
     private WorkBookController workBookController = null;
+    private WorkBook workBook = new WorkBook();
+
+    private int maxRow = DEFAULT_SHEET_MAX_ROW;
+    private int maxColumn = DEFAULT_SHEET_MAX_COLUMN;
 
     private int width;
     private int height;
 
-    private String[] allSheetName;
     private float sheetHeight;
-
-    private int numColumns = DEFAULT_NUM_COLUMNS;
-    private int numRows = DEFAULT_NUM_ROWS;
 
     private float cellWidth;
     private float cellHeight;
@@ -201,7 +209,7 @@ public class WorkBookView extends View implements DataChangeListenerService.OnDa
                         editFlag = false;
                         hideSoftKeyboard();
                         try {
-                            workBookController.setCell(currentSheetNum, selectedStartColumn, selectedStartRow, inputStringBuilder.toString());
+                            setCell(currentSheetNum, selectedStartColumn, selectedStartRow, inputStringBuilder.toString());
                         } catch (CellOutOfSheetBoundException e) {
                             if (DEBUG) {
                                 e.printStackTrace();
@@ -301,7 +309,7 @@ public class WorkBookView extends View implements DataChangeListenerService.OnDa
                         hideSoftKeyboard();
 
                         try {
-                            workBookController.setCell(currentSheetNum, selectedStartColumn, selectedStartRow, inputStringBuilder.toString());
+                            setCell(currentSheetNum, selectedStartColumn, selectedStartRow, inputStringBuilder.toString());
                         } catch (CellOutOfSheetBoundException ex) {
                             ex.printStackTrace();
                             final Context context = getContext();
@@ -316,7 +324,7 @@ public class WorkBookView extends View implements DataChangeListenerService.OnDa
                         final int tempColumn = getColumn(x);
                         final int tempRow = getRow(y);
 
-                        if (tempColumn <= numColumns && tempRow <= numRows) {
+                        if (tempColumn <= maxColumn && tempRow <= maxRow) {
                             selectedStartColumn = tempColumn;
                             selectedStartRow = tempRow;
                             selectedEndColumn = selectedStartColumn;
@@ -330,44 +338,44 @@ public class WorkBookView extends View implements DataChangeListenerService.OnDa
                     } else if (sheetMenuButtonsSectionRect.contains(x, y)) {    // 메뉴 영역에 대해 처리합니다.
                         int tempSheetNum = getSheetMenuNum(x);
                         if (tempSheetNum != currentSheetNum) {
-                            if (tempSheetNum < allSheetName.length) {
+                            if (tempSheetNum < getSheetCount()) {
                                 currentSheetNum = tempSheetNum;
                                 if (DEBUG) {
                                     Log.d(TAG, "currentSheetNum : " + currentSheetNum);
                                 }
-                                Toast.makeText(getContext(), workBookController.getSheetName(currentSheetNum), Toast.LENGTH_LONG).show();
+                                Toast.makeText(getContext(), getSheetName(currentSheetNum), Toast.LENGTH_LONG).show();
                                 invalidateSection(SECTION_TYPE_REDRAW);
                             }
                         }
                     } else if (sheetMenuAddButtonSectionRect.contains(x, y)) {
-                        currentSheetNum = allSheetName.length;
+                        currentSheetNum = getSheetCount();
 
                         // 새로운 시트가 추가된 위치로 시트 메뉴를 이동합니다.
                         if (currentSheetNum > (width / (sheetMenuButtonWidth + sheetMenuMargin)) - 1) {
-                            final int changedSheetCount = workBookController.getSheetCount() + 1;
+                            final int changedSheetCount = getSheetCount() + 1;
                             currentSheetMenuX = width - ((changedSheetCount * sheetMenuButtonWidth) + (changedSheetCount * sheetMenuMargin) + sheetMenuAddSheetButtonWidth);    // Maximum Sheet X
                         }
 
                         Toast.makeText(getContext(), "시트를 추가했습니다.", Toast.LENGTH_LONG).show();  //**string.xml
-                        workBookController.addSheet();
+                        addSheet();
                     } else if (headerCrossSectionRect.contains(x, y)) {
                         selectedStartColumn = 1;
                         selectedStartRow = 1;
-                        selectedEndColumn = numColumns;
-                        selectedEndRow = numRows;
+                        selectedEndColumn = maxColumn;
+                        selectedEndRow = maxRow;
 
                         invalidateSection(SECTION_TYPE_SHEET_AND_HEADER);
                     } else if (headerColumnSectionRect.contains(x, y)) {
                         selectedStartColumn = getColumn(x);
                         selectedStartRow = 1;
                         selectedEndColumn = getColumn(x);
-                        selectedEndRow = numRows;
+                        selectedEndRow = maxRow;
 
                         invalidateSection(SECTION_TYPE_SHEET_AND_HEADER);
                     } else if (headerRowSectionRect.contains(x, y)) {
                         selectedStartColumn = 1;
                         selectedStartRow = getRow(y);
-                        selectedEndColumn = numColumns;
+                        selectedEndColumn = maxColumn;
                         selectedEndRow = getRow(y);
 
                         invalidateSection(SECTION_TYPE_SHEET_AND_HEADER);
@@ -384,7 +392,7 @@ public class WorkBookView extends View implements DataChangeListenerService.OnDa
                     if (sheetMenuButtonsSectionRect.contains(x, y)) {  // 메뉴 영역에 대해 처리합니다.
                         final int tempSheetNum = getSheetMenuNum(x);
 
-                        if (tempSheetNum < allSheetName.length) {
+                        if (tempSheetNum < getSheetCount()) {
                             if (currentSheetNum != tempSheetNum) {
                                 currentSheetNum = tempSheetNum;
                                 if (DEBUG) {
@@ -394,7 +402,7 @@ public class WorkBookView extends View implements DataChangeListenerService.OnDa
                                 invalidateSection(SECTION_TYPE_REDRAW);
                             }
 
-                            createDialog(TYPE_DIALOG_SHEET_OPTION, getSheetMenuNum(x)).show();
+                            createDialog(TYPE_DIALOG_SHEET_OPTION).show();
                         }
                     }
                 }
@@ -415,7 +423,7 @@ public class WorkBookView extends View implements DataChangeListenerService.OnDa
                             selectedEndRow = selectedStartRow;
 
                             try {
-                                final Cell cell = workBookController.getCell(currentSheetNum, selectedStartColumn, selectedStartRow);
+                                final Cell cell = getCell(currentSheetNum, selectedStartColumn, selectedStartRow);
 
                                 if (cell != null) {
                                     inputStringBuilder = new StringBuilder(cell.getValue());
@@ -463,11 +471,11 @@ public class WorkBookView extends View implements DataChangeListenerService.OnDa
                             }
                         } else if (!editFlag && headerColumnSectionRect.contains(x1, y1)) {
                             selectedEndColumn = getColumn(x2);
-                            selectedEndRow = numRows;
+                            selectedEndRow = maxRow;
 
                             invalidateSection(SECTION_TYPE_SHEET_AND_HEADER);
                         } else if (!editFlag && headerRowSectionRect.contains(x1, y1)) {
-                            selectedEndColumn = numColumns;
+                            selectedEndColumn = maxColumn;
                             selectedEndRow = getRow(y2);
 
                             invalidateSection(SECTION_TYPE_SHEET_AND_HEADER);
@@ -499,6 +507,17 @@ public class WorkBookView extends View implements DataChangeListenerService.OnDa
 
     public WorkBookView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
+
+        init();
+        setOnKeyListener(keyListener);
+    }
+
+    private void init() {
+        workBook = new WorkBook();
+
+        for (int i = 0; i < DEFAULT_SHEET_COUNT; i++) {
+            workBook.createSheet();
+        }
     }
     
     @Override
@@ -555,12 +574,11 @@ public class WorkBookView extends View implements DataChangeListenerService.OnDa
     @Override
     protected void onFinishInflate() {
         super.onFinishInflate();
-
-        setOnKeyListener(keyListener);
     }
 
     public void setController(WorkBookController workBookController) {
         this.workBookController = workBookController;
+        this.workBook = null;
     }
 
     @Override
@@ -574,7 +592,7 @@ public class WorkBookView extends View implements DataChangeListenerService.OnDa
         // 레이아웃 전체의 바탕색을 흰색으로 처리합니다.
         canvas.drawColor(COLOR_WORKBOOK_BACKGROUND);
 
-        if (numColumns == 0 || numRows == 0) {
+        if (maxColumn == 0 || maxRow == 0) {
             return;
         }
 
@@ -656,12 +674,12 @@ public class WorkBookView extends View implements DataChangeListenerService.OnDa
         paint.setStyle(Paint.Style.STROKE);
         paint.setColor(COLOR_SHEET_BORDER);
 
-        for (int i = 1; i < numColumns; i++) {
-            canvas.drawLine(i * cellWidth, 0, i * cellWidth, numRows * cellHeight, paint);
+        for (int i = 1; i < maxColumn; i++) {
+            canvas.drawLine(i * cellWidth, 0, i * cellWidth, maxRow * cellHeight, paint);
         }
 
-        for (int i = 1; i < numRows; i++) {
-            canvas.drawLine(0, i * cellHeight, numColumns * cellWidth, i * cellHeight, paint);
+        for (int i = 1; i < maxRow; i++) {
+            canvas.drawLine(0, i * cellHeight, maxColumn * cellWidth, i * cellHeight, paint);
         }
 
         paint.reset();
@@ -680,9 +698,9 @@ public class WorkBookView extends View implements DataChangeListenerService.OnDa
         paint.setTextSize(fontSize);
 
         try {
-            for (int row = 1; row < workBookController.getMaxRow(currentSheetNum); row++) {
-                for (int column = 1; column < workBookController.getMaxColumn(currentSheetNum); column++) {
-                    Cell cell = workBookController.getCell(currentSheetNum, column, row);
+            for (int row = 1; row < maxRow; row++) {
+                for (int column = 1; column < maxColumn; column++) {
+                    Cell cell = getCell(currentSheetNum, column, row);
 
                     if (cell != null) {
                         final int cellType = cell.getType();
@@ -763,11 +781,11 @@ public class WorkBookView extends View implements DataChangeListenerService.OnDa
             startRow = 1;
         }
 
-        if (endColumn >= numColumns) {
-            endColumn = numColumns;
+        if (endColumn >= maxColumn) {
+            endColumn = maxColumn;
         }
-        if (endRow >= numRows) {
-            endRow = numRows;
+        if (endRow >= maxRow) {
+            endRow = maxRow;
         }
 
         // 선택 영역에 대한 가이드 라인을 그립니다.
@@ -775,9 +793,9 @@ public class WorkBookView extends View implements DataChangeListenerService.OnDa
         paint.setColor(COLOR_SELECTION_GUIDE_BACKGROUND);
 
         canvas.drawRect(0, (startRow - 1) * cellHeight,
-                workBookController.getMaxColumn(currentSheetNum) * cellWidth, endRow * cellHeight, paint);
+                maxColumn * cellWidth, endRow * cellHeight, paint);
         canvas.drawRect((startColumn - 1) * cellWidth, 0,
-                endColumn * cellWidth, workBookController.getMaxRow(currentSheetNum) * cellHeight, paint);
+                endColumn * cellWidth, maxRow * cellHeight, paint);
 
         // 실제 선택 영역을 그립니다.
         paint.setStyle(Paint.Style.FILL);
@@ -822,7 +840,7 @@ public class WorkBookView extends View implements DataChangeListenerService.OnDa
         textPaint.setTextSize(fontSize);
         textPaint.setColor(COLOR_HEADER_TEXT);
 
-        for (int i = 0; i < numColumns; i++) {
+        for (int i = 0; i < maxColumn; i++) {
             if (selectedStartColumn <= i + 1 && i + 1 <= selectedEndColumn || selectedEndColumn <= i + 1 && i + 1 <= selectedStartColumn) {
                 canvas.drawRect(i * cellWidth, 0, (i + 1) * cellWidth, headerColumnHeight, paint);
                 drawText(Integer.toString(i + 1), ALIGNMENT_CENTER, i * cellWidth, 0, cellWidth, headerColumnHeight, textPaint, canvas, true);
@@ -852,7 +870,7 @@ public class WorkBookView extends View implements DataChangeListenerService.OnDa
         textPaint.setTextSize(fontSize);
         textPaint.setColor(COLOR_HEADER_TEXT);
 
-        for (int i = 0; i < numRows; i++) {
+        for (int i = 0; i < maxRow; i++) {
             if (selectedStartRow <= i + 1 && i + 1 <= selectedEndRow || selectedEndRow <= i + 1 && i + 1 <= selectedStartRow) {
                 canvas.drawRect(0, i * cellHeight, headerRowWidth, (i + 1) * cellHeight, paint);
                 drawText(Integer.toString(i + 1), ALIGNMENT_CENTER, 0, i * cellHeight, headerRowWidth, cellHeight, textPaint, canvas, true);
@@ -899,12 +917,10 @@ public class WorkBookView extends View implements DataChangeListenerService.OnDa
         subTextPaint.setFakeBoldText(true);
         subTextPaint.setColor(COLOR_SHEET_MENU_SELECTED_TEXT);
 
-        if (workBookController != null) {
-            allSheetName = new String[workBookController.getSheetCount()];
+        String[] allSheetName = new String[getSheetCount()];
 
-            for (int i = 0; i < allSheetName.length; i++) {
-                allSheetName[i] = workBookController.getSheetName(i);
-            }
+        for (int i = 0; i < allSheetName.length; i++) {
+            allSheetName[i] = getSheetName(i);
         }
 
         for (int i = 0; i < allSheetName.length; i++) {
@@ -1042,8 +1058,8 @@ public class WorkBookView extends View implements DataChangeListenerService.OnDa
                     currentSheetY = 0;
                 }
 
-                float tempSheetX = sheetSectionRect.width() / scale - (cellWidth * numColumns);
-                float tempSheetY = sheetSectionRect.height() / scale - (cellHeight * numRows);
+                float tempSheetX = sheetSectionRect.width() / scale - (cellWidth * maxColumn);
+                float tempSheetY = sheetSectionRect.height() / scale - (cellHeight * maxRow);
 
                 if (currentSheetX < tempSheetX) {
                     currentSheetX = tempSheetX;
@@ -1054,8 +1070,8 @@ public class WorkBookView extends View implements DataChangeListenerService.OnDa
 
                 break;
             case SECTION_TYPE_SHEET_MENU:
-                int sheetNameCount = allSheetName.length;
-                float maxSheetMenuX = width - ((sheetNameCount * sheetMenuButtonWidth) + (sheetNameCount * sheetMenuMargin) + sheetMenuAddSheetButtonWidth);
+                int sheetCount = getSheetCount();
+                float maxSheetMenuX = width - ((sheetCount * sheetMenuButtonWidth) + (sheetCount * sheetMenuMargin) + sheetMenuAddSheetButtonWidth);
                 // 스크롤 이벤트를 통해 얻은 이동값으로 시트 메뉴 좌표의 기준점을 구합니다.
                 currentSheetMenuX += moveX / SCROLL_SPEED;
 
@@ -1063,7 +1079,7 @@ public class WorkBookView extends View implements DataChangeListenerService.OnDa
                 if (currentSheetMenuX > 0) {
                     currentSheetMenuX = 0;
                 }
-                if (width - sheetMenuAddSheetButtonWidth > (sheetNameCount * sheetMenuButtonWidth) + (sheetNameCount * sheetMenuMargin)) {
+                if (width - sheetMenuAddSheetButtonWidth > (sheetCount * sheetMenuButtonWidth) + (sheetCount * sheetMenuMargin)) {
                     currentSheetMenuX = 0;
                 } else if (currentSheetMenuX < maxSheetMenuX) {
                     currentSheetMenuX = maxSheetMenuX;
@@ -1088,13 +1104,17 @@ public class WorkBookView extends View implements DataChangeListenerService.OnDa
         return (int) (((y + (headerRowWidth * scale) - (currentSheetY * scale)) / (cellHeight * scale) - (int) ((headerRowWidth * scale) / (cellHeight * scale))));
     }
 
-    private AlertDialog createDialog(int type, final int sheetNum) {
+    private AlertDialog createDialog(int type) {
+
+        final String currentSheetName = getSheetName(currentSheetNum);
+
         switch (type) {
             case TYPE_DIALOG_SHEET_OPTION:
                 final String[] sheetOption = {getContext().getString(R.string.button_sheet_change_name),
                         getContext().getString(R.string.button_sheet_change_order), getContext().getString(R.string.button_sheet_delete)};
+
                 return new AlertDialog.Builder(getContext())
-                        .setTitle(workBookController.getSheetName(sheetNum))
+                        .setTitle(currentSheetName)
                         .setNegativeButton(getContext().getString(R.string.button_cancel), new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
@@ -1107,24 +1127,23 @@ public class WorkBookView extends View implements DataChangeListenerService.OnDa
                                     public void onClick(DialogInterface dialog, int which) {
                                         switch (which) {
                                             case 0:
-                                                createDialog(TYPE_DIALOG_SHEET_OPTION_CHANGE_NAME, sheetNum).show();
+                                                createDialog(TYPE_DIALOG_SHEET_OPTION_CHANGE_NAME).show();
                                                 break;
                                             case 1:
-                                                createDialog(TYPE_DIALOG_SHEET_OPTION_CHANGE_ORDER, sheetNum).show();
+                                                createDialog(TYPE_DIALOG_SHEET_OPTION_CHANGE_ORDER).show();
                                                 break;
                                             case 2:
-                                                createDialog(TYPE_DIALOG_SHEET_OPTION_DELETE, sheetNum).show();
+                                                createDialog(TYPE_DIALOG_SHEET_OPTION_DELETE).show();
                                                 break;
                                         }
                                     }
                                 }).create();
             case TYPE_DIALOG_SHEET_OPTION_CHANGE_NAME:
                 final EditText editSheetName = new EditText(getContext());
-                String sheetName = workBookController.getSheetName(sheetNum);
-                editSheetName.setText(sheetName);
-                editSheetName.setSelection(sheetName.length());
+                editSheetName.setText(currentSheetName);
+                editSheetName.setSelection(currentSheetName.length());
                 return new AlertDialog.Builder(getContext())
-                        .setTitle(sheetName)
+                        .setTitle(currentSheetName)
                         .setMessage(getContext().getString(R.string.message_sheet_change_name) + " :")
                         .setView(editSheetName)
                         .setPositiveButton(getContext().getString(R.string.button_ok), new DialogInterface.OnClickListener() {
@@ -1133,9 +1152,9 @@ public class WorkBookView extends View implements DataChangeListenerService.OnDa
                                 final Context context = getContext();
                                 String inputSheetName = editSheetName.getText().toString();
                                 if (inputSheetName.length() > 0) {
-                                    if (!inputSheetName.equals(workBookController.getSheetName(sheetNum))) {
+                                    if (!inputSheetName.equals(currentSheetName)) {
                                         try {
-                                            workBookController.setSheetName(sheetNum, inputSheetName);
+                                            setSheetName(currentSheetNum, inputSheetName);
                                             Toast.makeText(context, context.getText(R.string.message_sheet_change_name_success), Toast.LENGTH_LONG).show();  //**string.xml?
                                         } catch (DuplicatedSheetNameException e) {
                                             if (DEBUG) {
@@ -1163,22 +1182,22 @@ public class WorkBookView extends View implements DataChangeListenerService.OnDa
             case TYPE_DIALOG_SHEET_OPTION_CHANGE_ORDER:
                 final NumberPicker editSheetOrder = new NumberPicker(getContext());
                 editSheetOrder.setMinValue(1);
-                editSheetOrder.setMaxValue(allSheetName.length);
-                editSheetOrder.setValue(sheetNum + 1);
+                editSheetOrder.setMaxValue(getSheetCount());
+                editSheetOrder.setValue(currentSheetNum + 1);
                 return new AlertDialog.Builder(getContext())
-                        .setTitle(workBookController.getSheetName(sheetNum))
+                        .setTitle(currentSheetName)
                         .setMessage(getContext().getString(R.string.message_sheet_change_order)
                                 + " (" + getContext().getString(R.string.message_sheet_change_order_current)
-                                + " " + (sheetNum + 1) + "/" + allSheetName.length + ") :")
+                                + " " + (currentSheetNum + 1) + "/" + getSheetCount() + ") :")
                         .setView(editSheetOrder)
                         .setPositiveButton(getContext().getString(R.string.button_ok), new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
                                 final Context context = getContext();
                                 int inputSheetOrder = editSheetOrder.getValue() - 1;
-                                if (sheetNum != inputSheetOrder) {
+                                if (currentSheetNum != inputSheetOrder) {
                                     try {
-                                        workBookController.changeSheetOrder(sheetNum, inputSheetOrder);
+                                        changeSheetOrder(currentSheetNum, inputSheetOrder);
                                         currentSheetNum = inputSheetOrder;
                                         Toast.makeText(context, context.getText(R.string.message_sheet_change_order_success), Toast.LENGTH_LONG).show();  //**string.xml?
                                     } catch (SheetOutOfSheetListBoundsException e) {
@@ -1202,17 +1221,14 @@ public class WorkBookView extends View implements DataChangeListenerService.OnDa
                         .create();
             case TYPE_DIALOG_SHEET_OPTION_DELETE:
                 return new AlertDialog.Builder(getContext())
-                        .setTitle(workBookController.getSheetName(sheetNum))
+                        .setTitle(currentSheetName)
                         .setMessage(getContext().getString(R.string.message_sheet_delete))
                         .setPositiveButton(getContext().getString(R.string.button_yes), new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
                                 final Context context = getContext();
-                                if (allSheetName.length > 1) {
-                                    if (currentSheetNum == sheetNum) {
-                                        currentSheetNum = 0;
-                                    }
-                                    workBookController.deleteSheet(sheetNum);
+                                if (getSheetCount() > 1) {
+                                    deleteSheet(currentSheetNum);
                                     Toast.makeText(context, context.getText(R.string.message_sheet_delete_success), Toast.LENGTH_LONG).show();  //**string.xml?
                                 } else {
                                     Toast.makeText(context, context.getText(R.string.message_sheet_delete_at_least_one), Toast.LENGTH_LONG).show();  //**string.xml?
@@ -1258,5 +1274,101 @@ public class WorkBookView extends View implements DataChangeListenerService.OnDa
         }
 
         return true;
+    }
+
+    private Cell getCell(int sheetNum, int column, int row) {
+        if (workBookController != null) {
+            return workBookController.getCell(sheetNum, column, row);
+        } else {
+            int[] allSheetId = workBook.getAllSheetId();
+            Sheet sheet = workBook.getSheet(allSheetId[sheetNum]);
+
+            return sheet.getCell(column, row);
+        }
+    }
+
+    private Cell setCell(int sheetNum, int column, int row, String cellValue) {
+        int cellType = validateValue(cellValue);
+
+        if (workBookController != null) {
+            return workBookController.setCell(sheetNum, column, row, cellValue, cellType);
+        } else {
+            int[] allSheetId = workBook.getAllSheetId();
+            Sheet sheet = workBook.getSheet(allSheetId[sheetNum]);
+
+            return sheet.createCell(column, row, cellValue, cellType);
+        }
+    }
+
+    private int validateValue(String value) {
+
+        if (value.startsWith(EXCEL_FUNCTION_START_CHAR)) {
+            if (ExcelFunctionFactory.isExcelFunction(value)) {
+                return TYPE_CELL_FUNCTION;
+            } else {
+                return TYPE_CELL_STRING;
+            }
+        } else if (Utils.isNumber(value)) {
+            return TYPE_CELL_NUMBER;
+        } else {
+            return TYPE_CELL_STRING;
+        }
+    }
+
+    private String getSheetName(int sheetNum) {
+        if (workBookController != null) {
+            return workBookController.getSheetName(sheetNum);
+        } else {
+            int[] allSheetId = workBook.getAllSheetId();
+            Sheet sheet = workBook.getSheet(allSheetId[sheetNum]);
+
+            return sheet.getName();
+        }
+    }
+
+    private void setSheetName(int sheetNum, String newSheetName) {
+        if (workBookController != null) {
+            workBookController.setSheetName(sheetNum, newSheetName);
+        } else {
+            int[] allSheetId = workBook.getAllSheetId();
+
+            workBook.setSheetName(allSheetId[sheetNum], newSheetName);
+        }
+    }
+
+    private int getSheetCount() {
+        if (workBookController != null) {
+            return workBookController.getSheetCount();
+        } else {
+            return workBook.getAllSheetId().length;
+        }
+    }
+
+    private Sheet addSheet() {
+        if (workBookController != null) {
+            return workBookController.addSheet();
+        } else {
+            return workBook.createSheet();
+        }
+    }
+
+    private void deleteSheet(int sheetNum) {
+        if (workBookController != null) {
+            workBookController.deleteSheet(sheetNum);
+        } else {
+            int[] allSheetId = workBook.getAllSheetId();
+
+            workBook.deleteSheet(allSheetId[sheetNum]);
+        }
+    }
+
+    private void changeSheetOrder(int sheetNum, int newSheetOrder) {
+        if (workBookController != null) {
+            workBookController.changeSheetOrder(sheetNum, newSheetOrder);
+        } else {
+            int[] allSheetId = workBook.getAllSheetId();
+
+            workBook.changeSheetOrder(allSheetId[sheetNum], newSheetOrder);
+        }
     }
 }
