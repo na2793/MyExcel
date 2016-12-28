@@ -43,7 +43,7 @@ app > src 이하 activity를 포함한 java 파일들의 구조에 대해서만 
 > Activity는 화면에 View를 그리고, View에 Controller를 연결하며, Intent를 통해 입력 받은 데이터를 Controller에 다시 전달합니다. 현재 단일 Activity(Main Activity)로 구현되어 있습니다.
 
 ###controller
-> Controller는 각각 독립적으로 존재하는 View와 Model을 연결하고, Model의 갱신된 데이터를 View가 알 수 있도록 합니다. 
+> Controller는 각각 독립적으로 존재하는 View와 Model을 연결하고, Model의 갱신된 데이터를 View에 전달합니다. 
 
 ###model
 > Model은 데이터들의 관계와 그 데이터들을 처리하는 방식에 대해 정의합니다.
