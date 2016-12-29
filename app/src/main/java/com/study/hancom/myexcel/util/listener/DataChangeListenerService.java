@@ -18,7 +18,7 @@ public class DataChangeListenerService {
 
     private static HashSet<OnDataChangeListener> dataChangeListenerList = new HashSet<>();  // 추가된 listener들을 담을 데이터 구조체 (중복 불가)
 
-    public static void setDataChangeListener(OnDataChangeListener dataChangeListener) {
+    public static void addDataChangeListener(OnDataChangeListener dataChangeListener) {
         dataChangeListenerList.add(dataChangeListener);
     }
 
